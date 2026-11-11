@@ -13,15 +13,18 @@ jobs:
     - name: Descargar código fuente
       uses: actions/checkout@v4
 
-    - name: Compilar todos los archivos Swift para watchOS
+    - name: Compilar archivos Swift para watchOS 10
       run: |
         mkdir -p AppStructure/Payload/App.app
         
-        # Compila usando el SDK de watchOS para reconocer WatchKit
+        # Compila actualizando el target de despliegue a watchOS 10.0
         find . -name "*.swift" | sort -u | xargs swiftc \
           -sdk $(xcrun --sdk watchos --show-sdk-path) \
-          -target arm64_32-apple-watchos8.0 \
+          -target arm64_32-apple-watchos10.0 \
           -emit-executable \
+          -framework SwiftUI \
+          -framework WatchKit \
+          -framework Foundation \
           -o AppStructure/Payload/App.app/App
 
         # Genera el archivo Info.plist básico obligatorio
