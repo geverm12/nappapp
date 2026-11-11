@@ -57,10 +57,10 @@ jobs:
         </plist>
         EOF
 
-        # 2. Compilación para watchOS (Apple Watch)
+        # 2. Compilación para watchOS (Apple Watch) con soporte para HealthKit avanzado
         swiftc \
           -sdk $(xcrun --sdk watchos --show-sdk-path) \
-          -target arm64-apple-watchos26.0 \
+          -target arm64_32-apple-watchos26.0 \
           -emit-executable \
           NapController.swift WorkoutManager.swift MotionSampler.swift SleepDetector.swift NapConfig.swift WatchApp/WatchApp.swift WatchApp/WatchContentView.swift \
           -framework SwiftUI \
