@@ -2,19 +2,14 @@ import Foundation
 // import WatchKit
 import UserNotifications
 
-/// Orquesta toda la siesta: calibración -> escaneo -> sueño detectado -> alarma.
-///
-/// Ahorro de batería: en cuanto se detecta el sueño se apagan el sensor de pulso,
-/// la sesión de entrenamiento y el acelerómetro. La alarma queda en manos del sistema
-/// (notificaciones locales repetidas), así que el reloj puede suspender la app.
 @MainActor
 final class NapController: NSObject, ObservableObject {
     enum Phase {
-        case idle         // configurando
-        case calibrating  // midiendo el pulso inicial
-        case monitoring   // escaneando si te has dormido
-        case asleep       // dormido: cuenta atrás hasta la alarma
-        case ringing      // alarma sonando
+        case idle
+        case calibrating
+        case monitoring
+        case asleep
+        case ringing
     }
 
     @Published var phase: Phase = .idle
@@ -39,7 +34,6 @@ final class NapController: NSObject, ObservableObject {
     private var startedAt = Date()
     private var log: [String] = []
 
-    /// La alarma se programa varias veces seguidas para que un solo aviso perdido no impida despertar.
     private enum Alarm {
         static let repeats = 6
         static let spacing: TimeInterval = 20
@@ -55,8 +49,6 @@ final class NapController: NSObject, ObservableObject {
         super.init()
         UNUserNotificationCenter.current().delegate = self
     }
-
-    // MARK: - Ciclo de vida
 
     func start() async {
         guard phase == .idle, !isStarting else { return }
@@ -95,7 +87,6 @@ final class NapController: NSObject, ObservableObject {
         sensorsRunning = true
 
         if !notificationsAllowed {
-            // Sin notificaciones, con la app suspendida no sonaría nada al despertar.
             message = "Notificaciones desactivadas: la alarma solo sonará con la app abierta"
         }
 
@@ -107,7 +98,6 @@ final class NapController: NSObject, ObservableObject {
         loopTask = Task { await scanLoop() }
     }
 
-    /// Detiene todo y vuelve a la pantalla de ajustes.
     func stop() {
         loopTask?.cancel()
         alarmTask?.cancel()
@@ -124,7 +114,6 @@ final class NapController: NSObject, ObservableObject {
         wakeDate = nil
     }
 
-    /// Apaga pulso, sesión de entrenamiento y acelerómetro (lo que más batería gasta).
     private func stopSensors() {
         guard sensorsRunning else { return }
         sensorsRunning = false
@@ -133,17 +122,12 @@ final class NapController: NSObject, ObservableObject {
         currentHR = nil
     }
 
-    /// Llamar al volver la app a primer plano: si la hora de despertar ya pasó
-    /// mientras estaba suspendida, activa la alarma en pantalla.
     func checkWake() {
         guard phase == .asleep, let wake = wakeDate, Date() >= wake else { return }
         ring(reason: "Has dormido \(config.napDurationMinutes) min")
     }
 
-    // MARK: - Escaneo
-
     private func handleHeartRate(_ bpm: Double) {
-        // Solo se publica si cambia el valor mostrado: evita redibujar la pantalla sin necesidad.
         if Int(bpm) != currentHR.map({ Int($0) }) {
             currentHR = bpm
         }
@@ -151,7 +135,6 @@ final class NapController: NSObject, ObservableObject {
     }
 
     private func scanLoop() async {
-        // 1) Calibración: pulso de reposo despierto.
         try? await Task.sleep(for: .seconds(NapConfig.calibrationSeconds))
         guard !Task.isCancelled else { return }
 
@@ -159,14 +142,12 @@ final class NapController: NSObject, ObservableObject {
         detector.setBaseline(baseline)
         baselineHR = baseline
         if baseline == nil, message.isEmpty {
-            // HealthKit no avisa si deniegas el permiso de pulso: simplemente no llegan datos.
             message = "Sin lecturas de pulso: se detectará solo por movimiento"
         }
         hrSamples = []
         _ = motion.drainMean()
         phase = .monitoring
 
-        // 2) Escaneos periódicos (con tolerancia para que el sistema agrupe despertares de CPU).
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(config.scanIntervalSeconds),
                                   tolerance: .seconds(5))
@@ -181,7 +162,7 @@ final class NapController: NSObject, ObservableObject {
         hrSamples = []
 
         let asleep = detector.evaluate(sample)
-        baselineHR = detector.baselineHR  // pulso de reposo actualizado
+        baselineHR = detector.baselineHR
         let elapsed = Int(Date().timeIntervalSince(startedAt))
         log.append("\(elapsed),monitor,\(sample.avgHR.map { String(format: "%.1f", $0) } ?? ""),"
                    + "\(detector.baselineHR.map { String(format: "%.1f", $0) } ?? ""),"
@@ -194,15 +175,12 @@ final class NapController: NSObject, ObservableObject {
         }
     }
 
-    // MARK: - Dormido y alarma
-
     private func fellAsleep() {
         let now = Date()
         let seconds = TimeInterval(config.napDurationMinutes * 60)
         wakeDate = now.addingTimeInterval(seconds)
         phase = .asleep
 
-        // Ya no hace falta medir nada: se apagan los sensores y manda la alarma del sistema.
         stopSensors()
 
         let center = UNUserNotificationCenter.current()
@@ -211,7 +189,6 @@ final class NapController: NSObject, ObservableObject {
         scheduleAlarm(prefix: Alarm.wakePrefix, after: seconds,
                       body: "Has dormido \(config.napDurationMinutes) min.")
 
-        // Si la app sigue en primer plano, también suena/vibra dentro de la app.
         alarmTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(seconds), tolerance: .seconds(2))
             guard !Task.isCancelled else { return }
@@ -226,18 +203,50 @@ final class NapController: NSObject, ObservableObject {
         ringReason = reason
         phase = .ringing
 
-        // Si salta por "Espera máx." la sesión de entrenamiento sigue viva: se mantiene
-        // mientras vibra para que el háptico funcione aunque la muñeca esté bajada
-        // (puede que te hayas dormido sin que se detectara). Tras la siesta ya está apagada.
         hapticTask = Task { [weak self] in
             let end = Date().addingTimeInterval(Self.maxRingSeconds)
             while !Task.isCancelled, Date() < end {
-                // WKInterfaceDevice.current().play(.notification) // Comentado por compatibilidad con iOS
                 try? await Task.sleep(for: .seconds(1.5))
             }
-            // Nadie la ha parada: se apagan sensores para no vaciar la batería.
             if !Task.isCancelled { self?.stopSensors() }
         }
     }
 
-    /// Tiempo máximo vibrando dentro de la app si nadie pulsa "Parar".
+    private static let maxRingSeconds: TimeInterval = 5 * 60
+
+    private func scheduleAlarm(prefix: String, after seconds: TimeInterval, body: String) {
+        let center = UNUserNotificationCenter.current()
+        for i in 0..<Alarm.repeats {
+            let content = UNMutableNotificationContent()
+            content.title = "¡Despierta!"
+            content.body = body
+            content.sound = .default
+            content.interruptionLevel = .timeSensitive
+            let trigger = UNTimeIntervalNotificationTrigger(
+                timeInterval: max(1, seconds + Double(i) * Alarm.spacing), repeats: false)
+            center.add(UNNotificationRequest(identifier: "\(prefix)\(i)",
+                                           content: content, trigger: trigger))
+        }
+    }
+
+    private func mean(_ values: [Double]) -> Double? {
+        values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
+    }
+
+    private func saveLog() {
+        guard log.count > 1,
+              let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+        else { return }
+        let name = "siesta-\(Int(startedAt.timeIntervalSince1970)).csv"
+        try? log.joined(separator: "\n").write(to: dir.appendingPathComponent(name),
+                                               atomically: true, encoding: .utf8)
+    }
+}
+
+extension NapController: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                           willPresent notification: UNNotification) async
+        -> UNNotificationPresentationOptions {
+        [.banner, .sound]
+    }
+}
