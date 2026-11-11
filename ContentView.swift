@@ -26,7 +26,6 @@ struct ContentView: View {
 
                 if isActive {
                     Section {
-                        // Renderizado directo en línea para evitar conflictos de ObservedObject por consola
                         VStack(alignment: .leading, spacing: 6) {
                             Group {
                                 switch nap.phase {
@@ -92,7 +91,7 @@ struct ContentView: View {
             }
             .navigationTitle("Siesta")
         }
-        .onChange(of: scenePhase) { _, phase in
+        .onChange(of: scenePhase) { phase in
             if phase == .active { nap.checkWake() }
         }
     }
