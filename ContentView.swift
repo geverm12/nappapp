@@ -25,7 +25,43 @@ struct ContentView: View {
                 }
 
                 if isActive {
-                    Section { StatusView(nap: nap) }
+                    Section {
+                        // Renderizado directo en línea para evitar conflictos de ObservedObject por consola
+                        VStack(alignment: .leading, spacing: 6) {
+                            Group {
+                                switch nap.phase {
+                                case .calibrating:
+                                    Label("Midiendo pulso de reposo…", systemImage: "waveform.path.ecg")
+                                        .font(.headline)
+                                case .monitoring:
+                                    Label("Buscando sueño…", systemImage: "eye")
+                                        .font(.headline)
+                                case .asleep:
+                                    Label("Durmiendo", systemImage: "moon.zzz.fill")
+                                        .font(.headline).foregroundStyle(.indigo)
+                                    if let wake = nap.wakeDate {
+                                        Text("Alarma en").font(.footnote).foregroundStyle(.secondary)
+                                        Text(wake, style: .timer).font(.title2.monospacedDigit())
+                                    }
+                                case .ringing:
+                                    Label("¡Despierta!", systemImage: "alarm.fill")
+                                        .font(.headline).foregroundStyle(.orange)
+                                    Text(nap.ringReason).font(.footnote)
+                                case .idle:
+                                    EmptyView()
+                                }
+                            }
+
+                            if let hr = nap.currentHR {
+                                Label("Ahora: \(Int(hr)) lpm", systemImage: "heart.fill")
+                                    .font(.footnote).foregroundStyle(.red)
+                            }
+                            if let resting = nap.baselineHR {
+                                Label("Reposo: \(Int(resting)) lpm", systemImage: "heart")
+                                    .font(.footnote).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                 }
 
                 Section("Siesta") {
@@ -103,46 +139,5 @@ struct ContentView: View {
 
     private func formatSeconds(_ s: Int) -> String {
         s % 60 == 0 ? "\(s / 60) min" : "\(s) s"
-    }
-}
-
-struct StatusView: View {
-    @ObservedObject var nap: NapController
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Group {
-                switch nap.phase {
-                case .calibrating:
-                    Label("Midiendo pulso de reposo…", systemImage: "waveform.path.ecg")
-                        .font(.headline)
-                case .monitoring:
-                    Label("Buscando sueño…", systemImage: "eye")
-                        .font(.headline)
-                case .asleep:
-                    Label("Durmiendo", systemImage: "moon.zzz.fill")
-                        .font(.headline).foregroundStyle(.indigo)
-                    if let wake = nap.wakeDate {
-                        Text("Alarma en").font(.footnote).foregroundStyle(.secondary)
-                        Text(wake, style: .timer).font(.title2.monospacedDigit())
-                    }
-                case .ringing:
-                    Label("¡Despierta!", systemImage: "alarm.fill")
-                        .font(.headline).foregroundStyle(.orange)
-                    Text(nap.ringReason).font(.footnote)
-                case .idle:
-                    EmptyView()
-                }
-            }
-
-            if let hr = nap.currentHR {
-                Label("Ahora: \(Int(hr)) lpm", systemImage: "heart.fill")
-                    .font(.footnote).foregroundStyle(.red)
-            }
-            if let resting = nap.baselineHR {
-                Label("Reposo: \(Int(resting)) lpm", systemImage: "heart")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
-        }
     }
 }
