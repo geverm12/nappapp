@@ -7,7 +7,7 @@ import UserNotifications
 /// Ahorro de batería: en cuanto se detecta el sueño se apagan el sensor de pulso,
 /// la sesión de entrenamiento y el acelerómetro. La alarma queda en manos del sistema
 /// (notificaciones locales repetidas), así que el reloj puede suspender la app.
-@MainActor
+//@MainActor
 final class NapController: NSObject, ObservableObject {
     enum Phase {
         case idle         // configurando
