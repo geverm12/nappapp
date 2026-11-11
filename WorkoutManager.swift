@@ -6,7 +6,7 @@ import HealthKit
 ///
 /// `nonisolated`: HealthKit llama a los delegados desde colas propias, no desde el hilo principal.
 /// `@unchecked Sendable`: los cierres de `DispatchQueue.main.async` capturan `self`; así compila
-/// también con el modo de lenguaje Swift 6 de Xcode 27 (el estado solo se toca desde esos hilos de forma secuencial).
+/// también con el modo de lenguaje Swift 6 (el estado solo se toca desde esos hilos de forma secuencial).
 nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
@@ -17,14 +17,17 @@ nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
     var onError: ((String) -> Void)?
 
     func requestAuthorization() async throws {
-        let heartRate = HKQuantityType(.heartRate)
+        guard let heartRate = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
         try await store.requestAuthorization(
             toShare: [HKObjectType.workoutType()],
             read: [heartRate]
         )
     }
 
-    func start() throws {
+    func start() async throws {
+        // Solicitamos los permisos de HealthKit obligatoriamente antes de arrancar la sesión
+        try await requestAuthorization()
+
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = .mindAndBody
         configuration.locationType = .indoor
@@ -35,8 +38,9 @@ nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
             healthStore: store,
             workoutConfiguration: configuration
         )
+        
         // Solo pulso: el resto de métricas del entrenamiento (energía, etc.) gastan batería sin aportar nada.
-        let heartRate = HKQuantityType(.heartRate)
+        let heartRate = HKQuantityType.quantityType(forIdentifier: .heartRate)!
         for type in dataSource.typesToCollect where type != heartRate {
             dataSource.disableCollection(for: type)
         }
@@ -47,9 +51,9 @@ nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
         self.session = session
         self.builder = builder
 
-        let start = Date()
-        session.startActivity(with: start)
-        builder.beginCollection(withStart: start) { _, _ in }
+        let startDate = Date()
+        session.startActivity(with: startDate)
+        builder.beginCollection(withStart: startDate) { _, _ in }
     }
 
     func stop() {
@@ -79,7 +83,7 @@ extension WorkoutManager: HKWorkoutSessionDelegate {
 extension WorkoutManager: HKLiveWorkoutBuilderDelegate {
     func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder,
                         didCollectDataOf collectedTypes: Set<HKSampleType>) {
-        let heartRateType = HKQuantityType(.heartRate)
+        let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
         guard workoutBuilder === builder,  // ignora datos tardíos de una sesión ya cerrada
               collectedTypes.contains(heartRateType),
               let quantity = workoutBuilder.statistics(for: heartRateType)?.mostRecentQuantity()
