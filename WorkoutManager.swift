@@ -1,31 +1,33 @@
 import HealthKit
 
-/// Mantiene la app viva en segundo plano (sesión de "entrenamiento") y
-/// entrega el pulso cardíaco en directo. La sesión se descarta al terminar:
-/// no se guarda nada en Salud ni en los anillos de Actividad.
-///
-/// `nonisolated`: HealthKit llama a los delegados desde colas propias, no desde el hilo principal.
-/// `@unchecked Sendable`: los cierres de `DispatchQueue.main.async` capturan `self`; así compila
-/// también con el modo de lenguaje Swift 6 (el estado solo se toca desde esos hilos de forma secuencial).
 nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
 
-    /// Se llama en el hilo principal con cada lectura de pulso (lpm).
     var onHeartRate: ((Double) -> Void)?
     var onError: ((String) -> Void)?
 
     func requestAuthorization() async throws {
-        guard let heartRate = HKQuantityType.quantityType(forIdentifier: .heartRate) else { return }
-        try await store.requestAuthorization(
-            toShare: [HKObjectType.workoutType()],
-            read: [heartRate]
-        )
+        // Verificamos explícitamente que HealthKit esté disponible en este dispositivo (por ejemplo, iPad no tiene sensores de pulso nativos)
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw NSError(domain: "WorkoutManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "HealthKit no está disponible en este dispositivo."])
+        }
+
+        guard let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate),
+              let activeEnergyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else {
+            throw NSError(domain: "WorkoutManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "No se pudieron inicializar los tipos de HealthKit."])
+        }
+
+        let typesToShare: Set = [HKObjectType.workoutType()]
+        let typesToRead: Set = [heartRateType, activeEnergyType, HKObjectType.workoutType()]
+
+        // Solicitamos formalmente el acceso al almacenamiento de salud
+        try await store.requestAuthorization(toShare: typesToShare, read: typesToRead)
     }
 
     func start() async throws {
-        // Solicitamos los permisos de HealthKit obligatoriamente antes de arrancar la sesión
+        // Pedimos los permisos obligatoriamente antes de configurar la sesión
         try await requestAuthorization()
 
         let configuration = HKWorkoutConfiguration()
@@ -39,9 +41,8 @@ nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
             workoutConfiguration: configuration
         )
         
-        // Solo pulso: el resto de métricas del entrenamiento (energía, etc.) gastan batería sin aportar nada.
-        let heartRate = HKQuantityType.quantityType(forIdentifier: .heartRate)!
-        for type in dataSource.typesToCollect where type != heartRate {
+        let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate)!
+        for type in dataSource.typesToCollect where type != heartRateType {
             dataSource.disableCollection(for: type)
         }
         builder.dataSource = dataSource
@@ -57,8 +58,6 @@ nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
     }
 
     func stop() {
-        // Se sueltan las referencias ya: si el cierre llegara tarde y se empezara otra siesta
-        // entretanto, antes borraba la sesión nueva y dejaba de llegar el pulso.
         guard let session, let builder else { return }
         self.session = nil
         self.builder = nil
@@ -83,8 +82,8 @@ extension WorkoutManager: HKWorkoutSessionDelegate {
 extension WorkoutManager: HKLiveWorkoutBuilderDelegate {
     func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder,
                         didCollectDataOf collectedTypes: Set<HKSampleType>) {
-        let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
-        guard workoutBuilder === builder,  // ignora datos tardíos de una sesión ya cerrada
+        let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate)!
+        guard workoutBuilder === builder,
               collectedTypes.contains(heartRateType),
               let quantity = workoutBuilder.statistics(for: heartRateType)?.mostRecentQuantity()
         else { return }
