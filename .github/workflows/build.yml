@@ -17,10 +17,9 @@ jobs:
       run: |
         mkdir -p AppStructure/Payload/App.app/Watch/WatchApp.app
         
-        # 1. Compilación para iOS (iPhone) - Incluyendo WorkoutManager y HealthKit
         swiftc \
           -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-          -target arm64-apple-ios17.0 \
+          -target arm64-apple-ios26.0 \
           -emit-executable \
           ContentView.swift NapController.swift NapConfig.swift SleepDetector.swift MotionSampler.swift WorkoutManager.swift \
           -framework SwiftUI \
@@ -30,7 +29,6 @@ jobs:
           -framework UserNotifications \
           -o AppStructure/Payload/App.app/App
 
-        # Info.plist de iOS
         cat << 'EOF' > AppStructure/Payload/App.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -49,7 +47,7 @@ jobs:
             <key>CFBundleVersion</key>
             <string>1</string>
             <key>MinimumOSVersion</key>
-            <string>17.0</string>
+            <string>26.0</string>
             <key>UIDeviceFamily</key>
             <array>
                 <integer>1</integer>
@@ -58,7 +56,6 @@ jobs:
         </plist>
         EOF
 
-        # 2. Compilación para watchOS (Apple Watch)
         swiftc \
           -sdk $(xcrun --sdk watchos --show-sdk-path) \
           -target arm64_32-apple-watchos26.0 \
@@ -71,7 +68,6 @@ jobs:
           -framework WatchKit \
           -o AppStructure/Payload/App.app/Watch/WatchApp.app/WatchApp
 
-        # Info.plist de watchOS
         cat << 'EOF' > AppStructure/Payload/App.app/Watch/WatchApp.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -93,7 +89,6 @@ jobs:
         </plist>
         EOF
 
-        # 3. Empaquetar IPA final
         cd AppStructure
         zip -r ../MiAppWatch.ipa Payload
         cd ..
