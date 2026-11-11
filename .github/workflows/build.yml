@@ -13,14 +13,14 @@ jobs:
     - name: Descargar código fuente
       uses: actions/checkout@v4
 
-    - name: Compilar archivos Swift para iOS 17
+    - name: Compilar archivos Swift para iOS 26
       run: |
         mkdir -p AppStructure/Payload/App.app
         
-        # Compila utilizando el SDK de iOS y el target actualizado a iOS 17.0 para soportar HealthKit moderno
+        # Compila utilizando el SDK de iOS y el target actualizado a iOS 26.0 para HealthKit moderno
         find . -name "*.swift" | sort -u | xargs swiftc \
           -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-          -target arm64-apple-ios17.0 \
+          -target arm64-apple-ios26.0 \
           -emit-executable \
           -framework SwiftUI \
           -framework UIKit \
@@ -29,7 +29,7 @@ jobs:
           -framework UserNotifications \
           -o AppStructure/Payload/App.app/App
 
-        # Genera el Info.plist configurado para iOS 17+
+        # Genera el Info.plist configurado para iOS 26+
         cat << 'EOF' > AppStructure/Payload/App.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -48,7 +48,7 @@ jobs:
             <key>CFBundleVersion</key>
             <string>1</string>
             <key>MinimumOSVersion</key>
-            <string>17.0</string>
+            <string>26.0</string>
             <key>UIDeviceFamily</key>
             <array>
                 <integer>1</integer>
