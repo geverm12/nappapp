@@ -28,7 +28,6 @@ struct ContentView: View {
                     Section { StatusView(nap: nap) }
                 }
 
-                // Los ajustes se bloquean mientras la siesta está activa.
                 Section("Siesta") {
                     Stepper(value: $napDuration, in: 5...120, step: 5) {
                         labeled("Dormir", "\(napDuration) min")
@@ -62,7 +61,6 @@ struct ContentView: View {
         }
     }
 
-    /// "Empezar siesta" cuando está parada; "Cancelar siesta" (o "Parar alarma") cuando está activa.
     @ViewBuilder
     private var mainButton: some View {
         switch nap.phase {
@@ -108,33 +106,33 @@ struct ContentView: View {
     }
 }
 
-// MARK: - Estado de la siesta en curso
-
 struct StatusView: View {
     @ObservedObject var nap: NapController
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            switch nap.phase {
-            case .calibrating:
-                Label("Midiendo pulso de reposo…", systemImage: "waveform.path.ecg")
-                    .font(.headline)
-            case .monitoring:
-                Label("Buscando sueño…", systemImage: "eye")
-                    .font(.headline)
-            case .asleep:
-                Label("Durmiendo", systemImage: "moon.zzz.fill")
-                    .font(.headline).foregroundStyle(.indigo)
-                if let wake = nap.wakeDate {
-                    Text("Alarma en").font(.footnote).foregroundStyle(.secondary)
-                    Text(wake, style: .timer).font(.title2.monospacedDigit())
+            Group {
+                switch nap.phase {
+                case .calibrating:
+                    Label("Midiendo pulso de reposo…", systemImage: "waveform.path.ecg")
+                        .font(.headline)
+                case .monitoring:
+                    Label("Buscando sueño…", systemImage: "eye")
+                        .font(.headline)
+                case .asleep:
+                    Label("Durmiendo", systemImage: "moon.zzz.fill")
+                        .font(.headline).foregroundStyle(.indigo)
+                    if let wake = nap.wakeDate {
+                        Text("Alarma en").font(.footnote).foregroundStyle(.secondary)
+                        Text(wake, style: .timer).font(.title2.monospacedDigit())
+                    }
+                case .ringing:
+                    Label("¡Despierta!", systemImage: "alarm.fill")
+                        .font(.headline).foregroundStyle(.orange)
+                    Text(nap.ringReason).font(.footnote)
+                case .idle:
+                    EmptyView()
                 }
-            case .ringing:
-                Label("¡Despierta!", systemImage: "alarm.fill")
-                    .font(.headline).foregroundStyle(.orange)
-                Text(nap.ringReason).font(.footnote)
-            case .idle:
-                EmptyView()
             }
 
             if let hr = nap.currentHR {
