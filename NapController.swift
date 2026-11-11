@@ -78,7 +78,7 @@ final class NapController: NSObject, ObservableObject {
         }
 
         do {
-            try workout.start()
+            try await workout.start()
         } catch {
             message = "No se pudo iniciar: \(error.localizedDescription)"
             return
