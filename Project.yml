@@ -1,0 +1,26 @@
+name: NapApp
+options:
+  bundleIdPrefix: com.tudominio # Cambia esto por tu identificador base
+
+targets:
+  TuAppIOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: .
+        excludes:
+          - WatchApp
+    settings:
+      INFOPLIST_FILE: Info.plist
+      PRODUCT_BUNDLE_IDENTIFIER: com.tudominio.nappapp
+
+  TuAppWatch:
+    type: watch2-app
+    platform: watchOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: WatchApp
+    settings:
+      INFOPLIST_FILE: WatchApp/Info.plist
+      PRODUCT_BUNDLE_IDENTIFIER: com.tudominio.nappapp.watchkitapp
