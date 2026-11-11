@@ -28,7 +28,7 @@ jobs:
           -framework UserNotifications \
           -o AppStructure/Payload/App.app/App
 
-        # Genera el Info.plist con los identificadores correctos para watchOS
+        # Genera el Info.plist permitiendo tanto iPhone (1) como Apple Watch (4)
         cat << 'EOF' > AppStructure/Payload/App.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -50,6 +50,7 @@ jobs:
             <string>10.0</string>
             <key>UIDeviceFamily</key>
             <array>
+                <integer>1</integer>
                 <integer>4</integer>
             </array>
         </dict>
