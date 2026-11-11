@@ -13,21 +13,22 @@ jobs:
     - name: Descargar código fuente
       uses: actions/checkout@v4
 
-    - name: Compilar archivos Swift para iOS
+    - name: Compilar archivos Swift para watchOS 10
       run: |
         mkdir -p AppStructure/Payload/App.app
         
-        # Compila usando el SDK de iOS y la arquitectura arm64 para iPhone
+        # Compila utilizando el SDK de watchOS para reconocer WatchKit
         find . -name "*.swift" | sort -u | xargs swiftc \
-          -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-          -target arm64-apple-ios16.0 \
+          -sdk $(xcrun --sdk watchos --show-sdk-path) \
+          -target arm64_32-apple-watchos10.0 \
           -emit-executable \
           -framework SwiftUI \
-          -framework UIKit \
+          -framework WatchKit \
           -framework Foundation \
+          -framework UserNotifications \
           -o AppStructure/Payload/App.app/App
 
-        # Genera el Info.plist adaptado para iOS con su ejecutable
+        # Genera el Info.plist con los identificadores correctos para watchOS
         cat << 'EOF' > AppStructure/Payload/App.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -46,7 +47,11 @@ jobs:
             <key>CFBundleVersion</key>
             <string>1</string>
             <key>MinimumOSVersion</key>
-            <string>16.0</string>
+            <string>10.0</string>
+            <key>UIDeviceFamily</key>
+            <array>
+                <integer>4</integer>
+            </array>
         </dict>
         </plist>
         EOF
