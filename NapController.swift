@@ -1,5 +1,5 @@
 import Foundation
-import WatchKit
+// import WatchKit
 import UserNotifications
 
 /// Orquesta toda la siesta: calibración -> escaneo -> sueño detectado -> alarma.
@@ -232,54 +232,12 @@ final class NapController: NSObject, ObservableObject {
         hapticTask = Task { [weak self] in
             let end = Date().addingTimeInterval(Self.maxRingSeconds)
             while !Task.isCancelled, Date() < end {
-                WKInterfaceDevice.current().play(.notification)
+                // WKInterfaceDevice.current().play(.notification) // Comentado por compatibilidad con iOS
                 try? await Task.sleep(for: .seconds(1.5))
             }
-            // Nadie la ha parado: se apagan sensores para no vaciar la batería.
+            // Nadie la ha parada: se apagan sensores para no vaciar la batería.
             if !Task.isCancelled { self?.stopSensors() }
         }
     }
 
     /// Tiempo máximo vibrando dentro de la app si nadie pulsa "Parar".
-    private static let maxRingSeconds: TimeInterval = 5 * 60
-
-    // MARK: - Utilidades
-
-    /// Programa `Alarm.repeats` notificaciones locales, una cada `Alarm.spacing` segundos.
-    private func scheduleAlarm(prefix: String, after seconds: TimeInterval, body: String) {
-        let center = UNUserNotificationCenter.current()
-        for i in 0..<Alarm.repeats {
-            let content = UNMutableNotificationContent()
-            content.title = "¡Despierta!"
-            content.body = body
-            content.sound = .default
-            content.interruptionLevel = .timeSensitive
-            let trigger = UNTimeIntervalNotificationTrigger(
-                timeInterval: max(1, seconds + Double(i) * Alarm.spacing), repeats: false)
-            center.add(UNNotificationRequest(identifier: "\(prefix)\(i)",
-                                             content: content, trigger: trigger))
-        }
-    }
-
-    private func mean(_ values: [Double]) -> Double? {
-        values.isEmpty ? nil : values.reduce(0, +) / Double(values.count)
-    }
-
-    /// Guarda un CSV en Documentos para ajustar los umbrales después.
-    private func saveLog() {
-        guard log.count > 1,
-              let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
-        else { return }
-        let name = "siesta-\(Int(startedAt.timeIntervalSince1970)).csv"
-        try? log.joined(separator: "\n").write(to: dir.appendingPathComponent(name),
-                                              atomically: true, encoding: .utf8)
-    }
-}
-
-extension NapController: UNUserNotificationCenterDelegate {
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                            willPresent notification: UNNotification) async
-        -> UNNotificationPresentationOptions {
-        [.banner, .sound]
-    }
-}
