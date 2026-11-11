@@ -1,4 +1,4 @@
-name: Compilar Proyecto iOS y watchOS
+name: Build and Package App
 
 on:
   push:
@@ -10,103 +10,58 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - name: Descargar código fuente
+    - name: Checkout Repository
       uses: actions/checkout@v4
 
-    - name: Compilar App de iOS y App de Watch
+    - name: Set up Xcode Version
       run: |
-        mkdir -p AppStructure/Payload/App.app/Watch/WatchApp.app
+        sudo xcode-select -s /Applications/Xcode.app
+        xcodebuild -version
+
+    - name: Build iOS App
+      run: |
+        echo "Compilando aplicación de iOS..."
+        xcodebuild build \
+          -sdk iphoneos \
+          -target TuAppIOS \
+          -configuration Release \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          CONFIGURATION_BUILD_DIR="./build/Release-iphoneos"
+
+    - name: Build watchOS App Extension
+      run: |
+        echo "Compilando extensión de Apple Watch..."
+        xcodebuild build \
+          -sdk watchos \
+          -target TuAppWatch \
+          -configuration Release \
+          CODE_SIGN_IDENTITY="" \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
+          CONFIGURATION_BUILD_DIR="./build/Release-watchos"
+
+    - name: Package .ipa for Sideloadly
+      run: |
+        echo "Empaquetando estructura del IPA..."
+        mkdir -p Payload
         
-        # 1. Compilación para iOS (iPhone)
-        swiftc \
-          -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-          -target arm64-apple-ios26.0 \
-          -emit-executable \
-          AppMain.swift ContentView.swift NapController.swift NapConfig.swift SleepDetector.swift MotionSampler.swift WorkoutManager.swift \
-          -framework SwiftUI \
-          -framework UIKit \
-          -framework Foundation \
-          -framework HealthKit \
-          -framework UserNotifications \
-          -o AppStructure/Payload/App.app/App
+        # Copiar la app de iOS al Payload
+        cp -R "./build/Release-iphoneos/TuAppIOS.app" "Payload/TuApp.app"
+        
+        # Crear la carpeta de plugins/watchOS dentro de la app de iOS si procede
+        mkdir -p "Payload/TuApp.app/Watch"
+        if [ -d "./build/Release-watchos/TuAppWatch.app" ]; then
+          cp -R "./build/Release-watchos/TuAppWatch.app" "Payload/TuApp.app/Watch/"
+        fi
+        
+        # Comprimir en formato ZIP y renombrar a IPA
+        zip -r MiAppWatch.ipa Payload
+        echo "¡IPA generado con éxito!"
 
-        # Info.plist de iOS con permisos de HealthKit
-        cat << 'EOF' > AppStructure/Payload/App.app/Info.plist
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>CFBundleIdentifier</key>
-            <string>com.tuusuario.miapawatch</string>
-            <key>CFBundleName</key>
-            <string>SiestaApp</string>
-            <key>CFBundleExecutable</key>
-            <string>App</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>CFBundleShortVersionString</key>
-            <string>1.0</string>
-            <key>CFBundleVersion</key>
-            <string>1</string>
-            <key>MinimumOSVersion</key>
-            <string>26.0</string>
-            <key>UIDeviceFamily</key>
-            <array>
-                <integer>1</integer>
-            </array>
-            <key>NSHealthShareUsageDescription</key>
-            <string>La aplicación necesita leer tu ritmo cardíaco para detectar el inicio del sueño durante la siesta.</string>
-            <key>NSHealthUpdateUsageDescription</key>
-            <string>La aplicación necesita registrar las sesiones de entrenamiento de siesta en HealthKit.</string>
-        </dict>
-        </plist>
-        EOF
-
-        # 2. Compilación para watchOS (Apple Watch)
-        swiftc \
-          -sdk $(xcrun --sdk watchos --show-sdk-path) \
-          -target arm64_32-apple-watchos26.0 \
-          -emit-executable \
-          NapController.swift WorkoutManager.swift MotionSampler.swift SleepDetector.swift NapConfig.swift WatchApp/WatchApp.swift WatchApp/WatchContentView.swift \
-          -framework SwiftUI \
-          -framework Foundation \
-          -framework HealthKit \
-          -framework UserNotifications \
-          -framework WatchKit \
-          -o AppStructure/Payload/App.app/Watch/WatchApp.app/WatchApp
-
-        # Info.plist de watchOS con permisos de HealthKit
-        cat << 'EOF' > AppStructure/Payload/App.app/Watch/WatchApp.app/Info.plist
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>CFBundleIdentifier</key>
-            <string>com.tuusuario.miapawatch.watchkitapp</string>
-            <key>CFBundleName</key>
-            <string>SiestaWatch</string>
-            <key>CFBundleExecutable</key>
-            <string>WatchApp</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>WKWatchKitApp</key>
-            <true/>
-            <key>MinimumOSVersion</key>
-            <string>26.0</string>
-            <key>NSHealthShareUsageDescription</key>
-            <string>Necesitamos acceso al ritmo cardíaco para controlar tu siesta.</string>
-            <key>NSHealthUpdateUsageDescription</key>
-            <string>Necesitamos registrar los datos de la siesta en Salud.</string>
-        </dict>
-        </plist>
-        EOF
-
-        cd AppStructure
-        zip -r ../MiAppWatch.ipa Payload
-        cd ..
-
-    - name: Subir archivo IPA resultante
+    - name: Upload IPA Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: mi-app-ipa
+        name: MiAppWatch-IPA
         path: MiAppWatch.ipa
