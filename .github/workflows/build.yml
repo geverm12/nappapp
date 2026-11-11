@@ -17,12 +17,12 @@ jobs:
       run: |
         mkdir -p AppStructure/Payload/App.app/Watch/WatchApp.app
         
-        # 1. Compilación para iOS (iPhone) - Sin incluir WorkoutManager
+        # 1. Compilación para iOS (iPhone) - Incluyendo ContentView, NapController y dependencias
         swiftc \
           -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
           -target arm64-apple-ios17.0 \
           -emit-executable \
-          ContentView.swift NapConfig.swift \
+          ContentView.swift NapController.swift NapConfig.swift SleepDetector.swift MotionSampler.swift \
           -framework SwiftUI \
           -framework UIKit \
           -framework Foundation \
@@ -57,7 +57,7 @@ jobs:
         </plist>
         EOF
 
-        # 2. Compilación para watchOS (Apple Watch) - Incluyendo WorkoutManager y sensores
+        # 2. Compilación para watchOS (Apple Watch)
         swiftc \
           -sdk $(xcrun --sdk watchos --show-sdk-path) \
           -target arm64_32-apple-watchos26.0 \
