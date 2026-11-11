@@ -18,10 +18,21 @@ jobs:
         sudo xcode-select -s /Applications/Xcode.app
         xcodebuild -version
 
+    - name: Install XcodeGen
+      run: |
+        brew install xcodegen
+        xcodegen --version
+
+    - name: Generate Xcode Project
+      run: |
+        echo "Generando el archivo .xcodeproj con XcodeGen..."
+        xcodegen generate
+
     - name: Build iOS App
       run: |
         echo "Compilando aplicación de iOS..."
         xcodebuild build \
+          -project NapApp.xcodeproj \
           -sdk iphoneos \
           -target TuAppIOS \
           -configuration Release \
@@ -34,6 +45,7 @@ jobs:
       run: |
         echo "Compilando extensión de Apple Watch..."
         xcodebuild build \
+          -project NapApp.xcodeproj \
           -sdk watchos \
           -target TuAppWatch \
           -configuration Release \
@@ -50,7 +62,7 @@ jobs:
         # Copiar la app de iOS al Payload
         cp -R "./build/Release-iphoneos/TuAppIOS.app" "Payload/TuApp.app"
         
-        # Crear la carpeta de plugins/watchOS dentro de la app de iOS si procede
+        # Crear la carpeta Watch dentro de la app de iOS e insertar la app de watchOS
         mkdir -p "Payload/TuApp.app/Watch"
         if [ -d "./build/Release-watchos/TuAppWatch.app" ]; then
           cp -R "./build/Release-watchos/TuAppWatch.app" "Payload/TuApp.app/Watch/"
