@@ -5,7 +5,9 @@ import HealthKit
 /// no se guarda nada en Salud ni en los anillos de Actividad.
 ///
 /// `nonisolated`: HealthKit llama a los delegados desde colas propias, no desde el hilo principal.
-nonisolated final class WorkoutManager: NSObject {
+/// `@unchecked Sendable`: los cierres de `DispatchQueue.main.async` capturan `self`; así compila
+/// también con el modo de lenguaje Swift 6 de Xcode 27 (el estado solo se toca desde esos hilos de forma secuencial).
+nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
     private let store = HKHealthStore()
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
