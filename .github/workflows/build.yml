@@ -1,4 +1,4 @@
-name: Compilar Proyecto Swift a IPA
+name: Compilar Proyecto iOS y watchOS
 
 on:
   push:
@@ -13,14 +13,14 @@ jobs:
     - name: Descargar código fuente
       uses: actions/checkout@v4
 
-    - name: Compilar archivos Swift para iOS 26
+    - name: Compilar App de iOS y App de Watch
       run: |
-        mkdir -p AppStructure/Payload/App.app
+        mkdir -p AppStructure/Payload/App.app/Watch/WatchApp.app
         
-        # Compila utilizando el SDK de iOS y el target actualizado a iOS 26.0 para HealthKit moderno
-        find . -name "*.swift" | sort -u | xargs swiftc \
+        # 1. Compilación para iOS (iPhone)
+        find . -maxdepth 1 -name "*.swift" | sort -u | xargs swiftc \
           -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-          -target arm64-apple-ios26.0 \
+          -target arm64-apple-ios17.0 \
           -emit-executable \
           -framework SwiftUI \
           -framework UIKit \
@@ -29,7 +29,7 @@ jobs:
           -framework UserNotifications \
           -o AppStructure/Payload/App.app/App
 
-        # Genera el Info.plist configurado para iOS 26+
+        # Info.plist de iOS
         cat << 'EOF' > AppStructure/Payload/App.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -48,7 +48,7 @@ jobs:
             <key>CFBundleVersion</key>
             <string>1</string>
             <key>MinimumOSVersion</key>
-            <string>26.0</string>
+            <string>17.0</string>
             <key>UIDeviceFamily</key>
             <array>
                 <integer>1</integer>
@@ -57,6 +57,42 @@ jobs:
         </plist>
         EOF
 
+        # 2. Compilación para watchOS (Apple Watch)
+        swiftc \
+          -sdk $(xcrun --sdk watchos --show-sdk-path) \
+          -target arm64-apple-watchos26.0 \
+          -emit-executable \
+          NapController.swift WorkoutManager.swift MotionSampler.swift SleepDetector.swift NapConfig.swift WatchApp/WatchApp.swift WatchApp/WatchContentView.swift \
+          -framework SwiftUI \
+          -framework Foundation \
+          -framework HealthKit \
+          -framework UserNotifications \
+          -framework WatchKit \
+          -o AppStructure/Payload/App.app/Watch/WatchApp.app/WatchApp
+
+        # Info.plist de watchOS
+        cat << 'EOF' > AppStructure/Payload/App.app/Watch/WatchApp.app/Info.plist
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>CFBundleIdentifier</key>
+            <string>com.tuusuario.miapawatch.watchkitapp</string>
+            <key>CFBundleName</key>
+            <string>SiestaWatch</string>
+            <key>CFBundleExecutable</key>
+            <string>WatchApp</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>WKWatchKitApp</key>
+            <true/>
+            <key>MinimumOSVersion</key>
+            <string>26.0</string>
+        </dict>
+        </plist>
+        EOF
+
+        # 3. Empaquetar IPA final
         cd AppStructure
         zip -r ../MiAppWatch.ipa Payload
         cd ..
