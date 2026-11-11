@@ -17,18 +17,12 @@ jobs:
       run: |
         mkdir -p AppStructure/Payload/App.app
         
-        # Compila todos los archivos .swift de la carpeta en paralelo para iOS/WatchOS
+        # Busca y compila automáticamente cualquier archivo .swift del repositorio
         swiftc -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
                -target arm64-apple-ios15.0 \
                -emit-executable \
                -o AppStructure/Payload/App.app/App \
-               ContentView.swift \
-               MotionSampler.swift \
-               NapConfig.swift \
-               NapController.swift \
-               SiestaApp.swift \
-               SleepDetector.swift \
-               WorkoutManager.swift
+               $(find . -name "*.swift")
 
         # Genera el archivo Info.plist básico obligatorio para iOS
         cat << 'EOF' > AppStructure/Payload/App.app/Info.plist
@@ -39,7 +33,7 @@ jobs:
             <key>CFBundleIdentifier</key>
             <string>com.tuusuario.miapawatch</string>
             <key>CFBundleName</key>
-            <string>SiestaApp</string>
+            <string>MiAppWatch</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
