@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>tu.bundle.id</string>
+    <key>CFBundleName</key>
+    <string>SiestaApp</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>MinimumOSVersion</key>
+    <string>26.0</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>Necesitamos leer tu ritmo cardíaco para monitorizar el estado de la siesta.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>Necesitamos registrar tus sesiones de siesta como entrenamientos.</string>
+</dict>
+</plist>
