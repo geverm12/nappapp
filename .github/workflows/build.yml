@@ -17,7 +17,7 @@ jobs:
       run: |
         mkdir -p AppStructure/Payload/App.app/Watch/WatchApp.app
         
-        # 1. Compilación para iOS (iPhone) incluyendo el punto de entrada AppMain.swift
+        # 1. Compilación para iOS (iPhone)
         swiftc \
           -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
           -target arm64-apple-ios26.0 \
@@ -30,6 +30,7 @@ jobs:
           -framework UserNotifications \
           -o AppStructure/Payload/App.app/App
 
+        # Info.plist de iOS con permisos de HealthKit
         cat << 'EOF' > AppStructure/Payload/App.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -53,6 +54,10 @@ jobs:
             <array>
                 <integer>1</integer>
             </array>
+            <key>NSHealthShareUsageDescription</key>
+            <string>La aplicación necesita leer tu ritmo cardíaco para detectar el inicio del sueño durante la siesta.</string>
+            <key>NSHealthUpdateUsageDescription</key>
+            <string>La aplicación necesita registrar las sesiones de entrenamiento de siesta en HealthKit.</string>
         </dict>
         </plist>
         EOF
@@ -70,6 +75,7 @@ jobs:
           -framework WatchKit \
           -o AppStructure/Payload/App.app/Watch/WatchApp.app/WatchApp
 
+        # Info.plist de watchOS con permisos de HealthKit
         cat << 'EOF' > AppStructure/Payload/App.app/Watch/WatchApp.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -87,6 +93,10 @@ jobs:
             <true/>
             <key>MinimumOSVersion</key>
             <string>26.0</string>
+            <key>NSHealthShareUsageDescription</key>
+            <string>Necesitamos acceso al ritmo cardíaco para controlar tu siesta.</string>
+            <key>NSHealthUpdateUsageDescription</key>
+            <string>Necesitamos registrar los datos de la siesta en Salud.</string>
         </dict>
         </plist>
         EOF
