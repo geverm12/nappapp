@@ -13,18 +13,18 @@ jobs:
     - name: Descargar código fuente
       uses: actions/checkout@v4
 
-    - name: Compilar todos los archivos Swift en un ejecutable
+    - name: Compilar todos los archivos Swift para watchOS
       run: |
         mkdir -p AppStructure/Payload/App.app
         
-        # Busca y compila automáticamente cualquier archivo .swift del repositorio
-        swiftc -sdk $(xcrun --sdk iphoneos --show-sdk-path) \
-               -target arm64-apple-ios15.0 \
-               -emit-executable \
-               -o AppStructure/Payload/App.app/App \
-               $(find . -name "*.swift")
+        # Compila usando el SDK de watchOS para reconocer WatchKit
+        find . -name "*.swift" | sort -u | xargs swiftc \
+          -sdk $(xcrun --sdk watchos --show-sdk-path) \
+          -target arm64_32-apple-watchos8.0 \
+          -emit-executable \
+          -o AppStructure/Payload/App.app/App
 
-        # Genera el archivo Info.plist básico obligatorio para iOS
+        # Genera el archivo Info.plist básico obligatorio
         cat << 'EOF' > AppStructure/Payload/App.app/Info.plist
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -33,7 +33,7 @@ jobs:
             <key>CFBundleIdentifier</key>
             <string>com.tuusuario.miapawatch</string>
             <key>CFBundleName</key>
-            <string>MiAppWatch</string>
+            <string>SiestaApp</string>
             <key>CFBundlePackageType</key>
             <string>APPL</string>
             <key>CFBundleShortVersionString</key>
