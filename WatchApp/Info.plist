@@ -14,6 +14,8 @@
     <string>1</string>
     <key>MinimumOSVersion</key>
     <string>26.0</string>
+    <key>WKWatchKitApp</key>
+    <true/>
     <key>WKCompanionAppBundleIdentifier</key>
     <string>com.tudominio.nappapp</string>
     <key>UISupportedInterfaceOrientations</key>
