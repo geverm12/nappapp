@@ -21,6 +21,10 @@ targets:
     deploymentTarget: "26.0"
     sources:
       - path: WatchApp
+      - path: NapController.swift
+      - path: MotionSampler.swift
+      - path: SleepDetector.swift
+      - path: NapConfig.swift
     settings:
       INFOPLIST_FILE: WatchApp/Info.plist
       PRODUCT_BUNDLE_IDENTIFIER: com.tudominio.nappapp.watchkitapp
