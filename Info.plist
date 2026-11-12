@@ -5,7 +5,7 @@
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
-    <string>tu.bundle.id</string>
+    <string>com.tudominio.nappapp</string>
     <key>CFBundleName</key>
     <string>SiestaApp</string>
     <key>CFBundleShortVersionString</key>
