@@ -9,35 +9,37 @@ nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
     var onError: ((String) -> Void)?
 
     func requestAuthorization() async throws {
-        // Verificamos explícitamente que HealthKit esté disponible en este dispositivo
         guard HKHealthStore.isHealthDataAvailable() else {
             let errorMsg = "HealthKit no está disponible en este dispositivo."
-            DispatchQueue.main.async { self.onError?(errorMsg) }
+            await MainActor.run { self.onError?(errorMsg) }
             throw NSError(domain: "WorkoutManager", code: 1, userInfo: [NSLocalizedDescriptionKey: errorMsg])
         }
 
-        guard let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate),
-              let activeEnergyType = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) else {
-            let errorMsg = "No se pudieron inicializar los tipos de HealthKit."
-            DispatchQueue.main.async { self.onError?(errorMsg) }
+        guard let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) else {
+            let errorMsg = "No se pudo inicializar el tipo de ritmo cardíaco."
+            await MainActor.run { self.onError?(errorMsg) }
             throw NSError(domain: "WorkoutManager", code: 2, userInfo: [NSLocalizedDescriptionKey: errorMsg])
         }
 
-        let typesToShare: Set = [HKObjectType.workoutType()]
-        let typesToRead: Set = [heartRateType, activeEnergyType, HKObjectType.workoutType()]
+        let typesToShare: Set = [
+            HKObjectType.workoutType()
+        ]
+        
+        let typesToRead: Set = [
+            heartRateType,
+            HKObjectType.workoutType()
+        ]
 
         do {
-            // Solicitamos formalmente el acceso al almacenamiento de salud
             try await store.requestAuthorization(toShare: typesToShare, read: typesToRead)
         } catch {
-            DispatchQueue.main.async { self.onError?("Error de autorización HealthKit: \(error.localizedDescription)") }
+            await MainActor.run { self.onError?("Error de autorización HealthKit: \(error.localizedDescription)") }
             throw error
         }
     }
 
     func start() async {
         do {
-            // Pedimos los permisos obligatoriamente antes de configurar la sesión
             try await requestAuthorization()
 
             let configuration = HKWorkoutConfiguration()
@@ -64,10 +66,10 @@ nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
 
             let startDate = Date()
             session.startActivity(with: startDate)
-            builder.beginCollection(withStart: startDate) { _, _ in }
+            try await builder.beginCollection(withStart: startDate)
             
         } catch {
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.onError?("No se pudo iniciar el entrenamiento: \(error.localizedDescription)")
             }
         }
@@ -91,7 +93,7 @@ extension WorkoutManager: HKWorkoutSessionDelegate {
                         date: Date) {}
 
     func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
-        DispatchQueue.main.async { self.onError?(error.localizedDescription) }
+        Task { @MainActor in self.onError?(error.localizedDescription) }
     }
 }
 
@@ -105,7 +107,7 @@ extension WorkoutManager: HKLiveWorkoutBuilderDelegate {
         else { return }
 
         let bpm = quantity.doubleValue(for: HKUnit.count().unitDivided(by: .minute()))
-        DispatchQueue.main.async { self.onHeartRate?(bpm) }
+        Task { @MainActor in self.onHeartRate?(bpm) }
     }
 
     func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
