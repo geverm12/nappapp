@@ -66,7 +66,15 @@ nonisolated final class WorkoutManager: NSObject, @unchecked Sendable {
 
             let startDate = Date()
             session.startActivity(with: startDate)
-            try await builder.beginCollection(withStart: startDate)
+            
+            // Uso del callback de completado requerido por el SDK de watchOS
+            builder.beginCollection(withStart: startDate) { success, error in
+                if let error = error {
+                    Task { @MainActor in
+                        self.onError?("Error al iniciar colección: \(error.localizedDescription)")
+                    }
+                }
+            }
             
         } catch {
             await MainActor.run {
