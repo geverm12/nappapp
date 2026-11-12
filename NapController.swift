@@ -1,5 +1,4 @@
 import Foundation
-// import WatchKit
 import UserNotifications
 
 @MainActor
@@ -67,6 +66,7 @@ final class NapController: NSObject, ObservableObject {
             message = "Permiso de Salud denegado"
             return
         }
+
         let notificationsAllowed = (try? await UNUserNotificationCenter.current()
             .requestAuthorization(options: [.alert, .sound])) ?? false
 
@@ -77,12 +77,9 @@ final class NapController: NSObject, ObservableObject {
             Task { @MainActor in self?.message = text }
         }
 
-        do {
-            try await workout.start()
-        } catch {
-            message = "No se pudo iniciar: \(error.localizedDescription)"
-            return
-        }
+        // workout.start() maneja internamente sus propios errores en el WorkoutManager actualizado
+        await workout.start()
+        
         motion.start()
         sensorsRunning = true
 
@@ -150,7 +147,7 @@ final class NapController: NSObject, ObservableObject {
 
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(config.scanIntervalSeconds),
-                                  tolerance: .seconds(5))
+                                   tolerance: .seconds(5))
             guard !Task.isCancelled else { return }
             scan()
             if phase != .monitoring { return }
@@ -225,7 +222,7 @@ final class NapController: NSObject, ObservableObject {
             let trigger = UNTimeIntervalNotificationTrigger(
                 timeInterval: max(1, seconds + Double(i) * Alarm.spacing), repeats: false)
             center.add(UNNotificationRequest(identifier: "\(prefix)\(i)",
-                                           content: content, trigger: trigger))
+                                               content: content, trigger: trigger))
         }
     }
 
@@ -245,7 +242,7 @@ final class NapController: NSObject, ObservableObject {
 
 extension NapController: UNUserNotificationCenterDelegate {
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                           willPresent notification: UNNotification) async
+                                            willPresent notification: UNNotification) async
         -> UNNotificationPresentationOptions {
         [.banner, .sound]
     }
