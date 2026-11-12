@@ -22,6 +22,7 @@ targets:
     sources:
       - path: WatchApp
       - path: NapController.swift
+      - path: WorkoutManager.swift
       - path: MotionSampler.swift
       - path: SleepDetector.swift
       - path: NapConfig.swift
